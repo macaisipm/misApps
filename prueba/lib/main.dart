@@ -11,26 +11,114 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF005293),
+
+          leading: IconButton(
+            icon: const Icon(Icons.menu),
+            color: Colors.white,
+            onPressed: () {},
+          ),
+
+
+
+          title: const Text(
+            'Clase uno',
+            style: TextStyle(
+              color: Colors.white,)
+              ),
+
+            actions: [
+              PopupMenuButton<String>(
+                icon: const Icon(
+                  Icons.more_vert,
+                  color: Colors.white,
+                ),
+
+                itemBuilder: (BuildContext context) =>[
+                  const PopupMenuItem(
+                    value: 'perfil',
+                    child: Row(
+                      children: [
+                        Icon(Icons.account_circle),
+                        SizedBox(width: 10),
+                        Text('Perfil'),
+                      ],
+                      ),
+                  ),
+
+                  const PopupMenuItem(
+                    value: 'configuration',
+                    child: Row(
+                      children: [
+                        Icon(Icons.settings),
+                        SizedBox(width: 10),
+                        Text('Configuration'),
+                      ],
+                      ),
+                  ),
+                ],
+              ),
+            ],
+
+
+        ),
+
+      body: Column(
+        
+        children: [
+
+          Container(
+            height: 570.0,
+            width: double.infinity,
+            color: Colors.grey,
+            child: const Text('Tamaño card'),
+          ),
+
+          const SizedBox(height: 12.0),
+
+          Container(
+            height: 148.0,
+            width: double.infinity,
+            color: Colors.blue,
+            child: const Text('Tamaño item lista'),
+          ),
+
+          const SizedBox(height: 12.0),
+
+          Container(
+            height: 148.0,
+            width: double.infinity,
+            color: Colors.blue,
+            child: const Text('Tamaño item lista'),
+          ),
+        ],
+        
+        ),
+
+        bottomNavigationBar: BottomNavigationBar(
+
+          items: const [
+
+            BottomNavigationBarItem(
+              icon: Icon(Icons.message),
+              label: 'Mensajes',
+            ),
+
+            BottomNavigationBarItem(
+              icon: Icon(Icons.search),
+              label: 'Buscar',
+            ),
+
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home),
+              label: 'Inicio',
+            ),
+          ]
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+       ),
     );
   }
 }
