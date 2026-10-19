@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "444895680155",
+    "project_id": "economist26pm",
+    "storage_bucket": "economist26pm.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:444895680155:android:e7632a199959bdb942983e",
+        "android_client_info": {
+          "package_name": "com.example.flutter_application_1"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCFOrJE8Q7YdcAdhviS3SLmuEmjY5QC1ug"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
