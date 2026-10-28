@@ -26,7 +26,15 @@ flutter:
   uses-material-design: true
 
   assets:
-  - assets/img/
-  
+    - assets/img/
 
+  fonts:
+    - family: Barlow Condensed
+      fonts:
+        - asset: assets/fonts/BarlowCondensed-Light.ttf
+          weight: 300
+        - asset: assets/fonts/BarlowCondensed-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/BarlowCondensed-Medium.ttf
+          weight: 500
 

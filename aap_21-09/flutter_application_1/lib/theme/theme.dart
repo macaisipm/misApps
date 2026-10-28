@@ -92,8 +92,26 @@ class AppColors {
 
 // tema audiomack
 final ThemeData audiomack = ThemeData(
-
   useMaterial3: true,
+
+  fontFamily: AppTypography.fontFamily,
+
+  textTheme: const TextTheme(
+    displayLarge: AppTypography.h1,
+    displayMedium: AppTypography.h2,
+    displaySmall: AppTypography.h3,
+    headlineLarge: AppTypography.h4,
+    headlineMedium: AppTypography.h5,
+    headlineSmall: AppTypography.h6,
+    titleLarge: AppTypography.h6,
+    titleMedium: AppTypography.subtitle1,
+    titleSmall: AppTypography.subtitle2,
+    bodyLarge: AppTypography.body1,
+    bodyMedium: AppTypography.body2,
+    bodySmall: AppTypography.caption,
+    labelLarge: AppTypography.button,
+    labelSmall: AppTypography.overline,
+  ),
 
   colorScheme: const ColorScheme.light(
 
@@ -147,6 +165,7 @@ class FeedbackColors{
   static const Color informationContainer = Color(0xFF94DAFB);
   static const Color onInformationContainer = Color(0xFF066996);
 }
+
 
 class AppTypography {
     
