@@ -11,11 +11,20 @@ import 'theme/theme.dart';
 import 'views/lists.dart';
 import 'views/flash.dart';
 
+import 'package:google_sign_in/google_sign_in.dart';
+import 'auth/auth_gate.dart';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Inicializar Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Inicializar Google Sign-In
+  await GoogleSignIn.instance.initialize();
+
   runApp(const MainApp());
 }
 
@@ -27,7 +36,7 @@ class MainApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: audiomack,
-      home: const NoticiasScreen(),
+      home: const AuthGate(),
     );
   }
 }

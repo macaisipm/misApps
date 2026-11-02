@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "444895680155",
+    "project_id": "economist26pm",
+    "storage_bucket": "economist26pm.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:444895680155:android:e7632a199959bdb942983e",
+        "android_client_info": {
+          "package_name": "com.example.flutter_application_1"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "444895680155-376ir79vkv1m0kpr1nj1kb1u2likp9g3.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.flutter_application_1",
+            "certificate_hash": "2b4fd66175471dcd1299e46f70b0e0427411a783"
+          }
+        },
+        {
+          "client_id": "444895680155-tec7gc8d57oo6ll7emtdo7jnshhf8o7c.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCFOrJE8Q7YdcAdhviS3SLmuEmjY5QC1ug"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "444895680155-tec7gc8d57oo6ll7emtdo7jnshhf8o7c.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "444895680155-s5oftsemgvmfljtnijisd3gvpqc9kvcl.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.flutterApplication1"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
