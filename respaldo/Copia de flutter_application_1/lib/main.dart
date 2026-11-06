@@ -621,7 +621,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.md16),
       children: [
-        // Chips de categorías: solo aparecen en la pantalla principal.
+        // Chips de categorías
         if (!_mostrandoBuscador) ...[
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -848,19 +848,49 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
                             children: [
                               const Icon(
                                 Icons.access_time,
-                                color: AppColors.neutral500,
+                                size: 24,
+                                color: AppColors.neutral800,
                               ),
-                              const SizedBox(width: 8),
-                              Text(
-                                _fecha(noticia['creadoEn'] as Timestamp?),
-                                style: AppTypography.caption.copyWith(
-                                  color: AppColors.neutral800,
+
+                              const SizedBox(width: AppGap.normal8),
+
+                              Expanded(
+                                child: Text(
+                                  _fecha(noticia['creadoEn'] as Timestamp?),
+                                  style: AppTypography.caption.copyWith(
+                                    color: AppColors.neutral800,
+                                  ),
                                 ),
+                              ),
+
+                              SvgPicture.asset(
+                                'assets/iconos/video.svg',
+                                width: 24,
+                                height: 24,
+                                colorFilter: const ColorFilter.mode(
+                                  AppColors.neutral600,
+                                  BlendMode.srcIn,
+                                ),
+                              ),
+
+                              const SizedBox(width: AppGap.normal8),
+
+                              const Icon(
+                                Icons.bookmark_border,
+                                size: 24,
+                                color: AppColors.neutral600,
                               ),
                             ],
                           ),
 
-                          const SizedBox(height: 12),
+                          Padding(
+                            padding: const EdgeInsets.only(top: AppMargin.relaxed24),
+                            child: const Divider(
+                              color: AppColors.neutral300,
+                              thickness: 1,
+                              height: 1,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -899,9 +929,9 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
           style: _selectedIndex == 0
               ? AppTypography.h5.copyWith(color: AppColors.primary500)
               : AppTypography.h5.copyWith(
-                color: AppColors.neutral800,
-                fontWeight: FontWeight.w600,
-              ),
+                  color: AppColors.neutral800,
+                  fontWeight: FontWeight.w600,
+                ),
         ),
 
         centerTitle: _selectedIndex == 0,
