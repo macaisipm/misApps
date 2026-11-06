@@ -4,13 +4,16 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/views/user.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import 'firebase_options.dart';
 import 'theme/theme.dart';
-import 'views/lists.dart';
-import 'views/flash.dart';
+import 'views/podcasts.dart';
+import 'views/weekly.dart';
+import 'views/video.dart';
 import 'auth/auth_gate.dart';
 
 Future<void> main() async {
@@ -53,6 +56,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
   late final Stream<QuerySnapshot<Map<String, dynamic>>> _noticiasStream;
 
   int _selectedIndex = 0;
+  bool _mostrandoBuscador = false;
   String _busqueda = '';
   String _categoriaSeleccionada = 'Today';
 
@@ -613,6 +617,263 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
     );
   }
 
+  Widget _buildHome() {
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.md16),
+      children: [
+        // Chips de categorías: solo aparecen en la pantalla principal.
+        if (!_mostrandoBuscador) ...[
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: _categorias.map((categoria) {
+                final seleccionada = _categoriaSeleccionada == categoria;
+
+                return Padding(
+                  padding: const EdgeInsets.only(right: AppSpacing.sm8),
+                  child: ChoiceChip(
+                    label: Text(
+                      categoria,
+                      style: AppTypography.subtitle2.copyWith(
+                        color: seleccionada
+                            ? AppColors.neutral100
+                            : AppColors.secondary600,
+                      ),
+                    ),
+                    selected: seleccionada,
+                    showCheckmark: false,
+                    backgroundColor: AppColors.neutral100,
+                    selectedColor: AppColors.secondary300,
+                    side: BorderSide(
+                      color: seleccionada
+                          ? AppColors.secondary300
+                          : AppColors.secondary100,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    onSelected: (_) {
+                      setState(() {
+                        _categoriaSeleccionada = categoria;
+                      });
+                    },
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md16),
+        ],
+
+        Text(
+          _mostrandoBuscador ? 'Buscar noticias' : 'TOP STORIES',
+          textAlign: TextAlign.center,
+          style: AppTypography.subtitle1.copyWith(color: AppColors.primary500),
+        ),
+
+        const SizedBox(height: AppSpacing.md16),
+
+        // Buscador
+        if (_mostrandoBuscador) ...[
+          TextField(
+            controller: _busquedaController,
+            style: AppTypography.body1.copyWith(color: AppColors.neutral700),
+            onChanged: (valor) {
+              setState(() {
+                _busqueda = valor.trim().toLowerCase();
+              });
+            },
+            decoration: InputDecoration(
+              hintText: 'Buscar por título o autor',
+              hintStyle: AppTypography.body2.copyWith(
+                color: AppColors.neutral500,
+              ),
+              prefixIcon: Icon(Icons.search, color: AppColors.secondary300),
+              filled: true,
+              fillColor: AppColors.neutral100,
+              border: const OutlineInputBorder(),
+              enabledBorder: const OutlineInputBorder(
+                borderSide: BorderSide(color: AppColors.neutral300),
+              ),
+              focusedBorder: const OutlineInputBorder(
+                borderSide: BorderSide(color: AppColors.secondary300, width: 2),
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md16),
+        ],
+
+        // Cargar noticias desde Firebase
+        StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          stream: _noticiasStream,
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return Text(
+                'No se pudieron cargar las noticias.',
+                style: AppTypography.body2.copyWith(color: AppColors.error500),
+              );
+            }
+
+            if (!snapshot.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            // Filtrar noticias por categoría o búsqueda.
+            final documentos = snapshot.data!.docs.where((doc) {
+              final datos = doc.data();
+
+              // Filtro de categorías
+              if (!_mostrandoBuscador && _categoriaSeleccionada != 'Today') {
+                final categoria = (datos['categoria'] ?? '').toString();
+
+                if (categoria != _categoriaSeleccionada) {
+                  return false;
+                }
+              }
+
+              // Filtro de búsqueda
+              if (_mostrandoBuscador && _busqueda.isNotEmpty) {
+                final titulo = (datos['titulo'] ?? '').toString().toLowerCase();
+
+                final autor = (datos['autor'] ?? '').toString().toLowerCase();
+
+                return titulo.contains(_busqueda) || autor.contains(_busqueda);
+              }
+
+              return true;
+            }).toList();
+
+            // Mensaje cuando no hay resultados
+            if (documentos.isEmpty) {
+              String mensajeVacio;
+
+              if (_mostrandoBuscador && _busqueda.isNotEmpty) {
+                mensajeVacio = 'No se encontraron noticias.';
+              } else if (!_mostrandoBuscador &&
+                  _categoriaSeleccionada != 'Today') {
+                mensajeVacio = 'No hay noticias en esta categoría todavía.';
+              } else {
+                mensajeVacio = 'Todavía no hay noticias publicadas.';
+              }
+
+              return Text(
+                mensajeVacio,
+                style: AppTypography.body2.copyWith(
+                  color: AppColors.neutral600,
+                ),
+              );
+            }
+
+            // Mostrar noticias
+            return Column(
+              children: documentos.map((doc) {
+                final noticia = doc.data();
+
+                final imagen = noticia['imagen'] as String? ?? '';
+
+                final titulo = noticia['titulo'] as String? ?? 'Sin título';
+
+                final resumen = noticia['resumen'] as String? ?? '';
+
+                final tema = noticia['categoria'] as String? ?? '';
+
+                return Card(
+                  color: AppColors.neutral100,
+                  surfaceTintColor: Colors.transparent,
+                  elevation: 0,
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: () => _abrirNoticia(noticia),
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpacing.sm8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: AspectRatio(
+                              aspectRatio: 1.85,
+                              child: imagen.isEmpty
+                                  ? ColoredBox(
+                                      color: AppColors.tertiary200,
+                                      child: const Icon(
+                                        Icons.image_outlined,
+                                        color: AppColors.neutral600,
+                                      ),
+                                    )
+                                  : Image.network(
+                                      imagen,
+                                      width: double.infinity,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, _, _) => const Icon(
+                                        Icons.broken_image_outlined,
+                                      ),
+                                    ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 20),
+
+                          // tema
+                          Text(
+                            tema,
+                            style: AppTypography.caption.copyWith(
+                              color: AppColors.primary500,
+                              height: 1.2,
+                            ),
+                          ),
+
+                          // titulo
+                          Text(
+                            titulo,
+                            style: AppTypography.h5.copyWith(
+                              color: AppColors.neutral800,
+                            ),
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // resumen
+                          Text(
+                            resumen,
+                            style: AppTypography.subtitle2.copyWith(
+                              color: AppColors.neutral600,
+                            ),
+                          ),
+
+                          const SizedBox(height: 24),
+
+                          // fecha
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.access_time,
+                                color: AppColors.neutral500,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                _fecha(noticia['creadoEn'] as Timestamp?),
+                                style: AppTypography.caption.copyWith(
+                                  color: AppColors.neutral800,
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 12),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -622,348 +883,192 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
         backgroundColor: AppColors.neutral100,
         foregroundColor: AppColors.neutral700,
         surfaceTintColor: Colors.transparent,
-        leading: IconButton(icon: const Icon(Icons.menu), onPressed: () {}),
+        leading: _selectedIndex == 0
+            ? IconButton(icon: const Icon(Icons.menu), onPressed: () {})
+            : null,
+        automaticallyImplyLeading: false,
+
         title: Text(
-          'The Economist',
-          style: AppTypography.h5.copyWith(color: AppColors.primary500),
-        ),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {
-              setState(() {
-                _selectedIndex = 1;
-              });
-            },
-          ),
-        ],
-      ),
-
-      body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.md16),
-        children: [
-          // Chips de categorías: solo aparecen en la pantalla principal.
-          if (_selectedIndex == 0) ...[
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: _categorias.map((categoria) {
-                  final seleccionada = _categoriaSeleccionada == categoria;
-
-                  return Padding(
-                    padding: const EdgeInsets.only(right: AppSpacing.sm8),
-                    child: ChoiceChip(
-                      label: Text(
-                        categoria,
-                        style: AppTypography.subtitle2.copyWith(
-                          color: seleccionada
-                              ? AppColors.neutral100
-                              : AppColors.secondary600,
-                        ),
-                      ),
-                      selected: seleccionada,
-                      showCheckmark: false,
-                      backgroundColor: AppColors.neutral100,
-                      selectedColor: AppColors.secondary300,
-                      side: BorderSide(
-                        color: seleccionada
-                            ? AppColors.secondary300
-                            : AppColors.secondary100,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      onSelected: (_) {
-                        setState(() {
-                          _categoriaSeleccionada = categoria;
-                        });
-                      },
-                    ),
-                  );
-                }).toList(),
+          const [
+            'The Economist',
+            'Weekly',
+            'Podcast',
+            'Video',
+            'User',
+          ][_selectedIndex],
+          style: _selectedIndex == 0
+              ? AppTypography.h5.copyWith(color: AppColors.primary500)
+              : AppTypography.h5.copyWith(
+                color: AppColors.neutral800,
+                fontWeight: FontWeight.w600,
               ),
-            ),
-            const SizedBox(height: AppSpacing.md16),
-          ],
+        ),
 
-          Text(
-            _selectedIndex == 1 ? 'Buscar noticias' : 'TOP STORIES',
-            textAlign: TextAlign.center,
-            style: AppTypography.subtitle1.copyWith(
-              color: AppColors.primary500,
-            ),
-          ),
-
-          const SizedBox(height: AppSpacing.md16),
-
-          // Buscador
-          if (_selectedIndex == 1) ...[
-            TextField(
-              controller: _busquedaController,
-              style: AppTypography.body1.copyWith(color: AppColors.neutral700),
-              onChanged: (valor) {
+        centerTitle: _selectedIndex == 0,
+        actions: [
+          if (_selectedIndex == 0)
+            IconButton(
+              icon: Icon(_mostrandoBuscador ? Icons.close : Icons.search),
+              tooltip: _mostrandoBuscador
+                  ? 'Cerrar búsqueda'
+                  : 'Buscar noticias',
+              onPressed: () {
                 setState(() {
-                  _busqueda = valor.trim().toLowerCase();
+                  _mostrandoBuscador = !_mostrandoBuscador;
+                  _busqueda = '';
+                  _busquedaController.clear();
                 });
               },
-              decoration: InputDecoration(
-                hintText: 'Buscar por título o autor',
-                hintStyle: AppTypography.body2.copyWith(
-                  color: AppColors.neutral500,
-                ),
-                prefixIcon: Icon(Icons.search, color: AppColors.secondary300),
-                filled: true,
-                fillColor: AppColors.neutral100,
-                border: const OutlineInputBorder(),
-                enabledBorder: const OutlineInputBorder(
-                  borderSide: BorderSide(color: AppColors.neutral300),
-                ),
-                focusedBorder: const OutlineInputBorder(
-                  borderSide: BorderSide(
-                    color: AppColors.secondary300,
-                    width: 2,
-                  ),
-                ),
-              ),
             ),
-            const SizedBox(height: AppSpacing.md16),
-          ],
-
-          // Cargar noticias desde Firebase
-          StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-            stream: _noticiasStream,
-            builder: (context, snapshot) {
-              if (snapshot.hasError) {
-                return Text(
-                  'No se pudieron cargar las noticias.',
-                  style: AppTypography.body2.copyWith(
-                    color: AppColors.error500,
-                  ),
-                );
-              }
-
-              if (!snapshot.hasData) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              // Filtrar noticias por categoría o búsqueda.
-              final documentos = snapshot.data!.docs.where((doc) {
-                final datos = doc.data();
-
-                // Filtro de categorías
-                if (_selectedIndex == 0 && _categoriaSeleccionada != 'Today') {
-                  final categoria = (datos['categoria'] ?? '').toString();
-
-                  if (categoria != _categoriaSeleccionada) {
-                    return false;
-                  }
-                }
-
-                // Filtro de búsqueda
-                if (_selectedIndex == 1 && _busqueda.isNotEmpty) {
-                  final titulo = (datos['titulo'] ?? '')
-                      .toString()
-                      .toLowerCase();
-
-                  final autor = (datos['autor'] ?? '').toString().toLowerCase();
-
-                  return titulo.contains(_busqueda) ||
-                      autor.contains(_busqueda);
-                }
-
-                return true;
-              }).toList();
-
-              // Mensaje cuando no hay resultados
-              if (documentos.isEmpty) {
-                String mensajeVacio;
-
-                if (_selectedIndex == 1 && _busqueda.isNotEmpty) {
-                  mensajeVacio = 'No se encontraron noticias.';
-                } else if (_selectedIndex == 0 &&
-                    _categoriaSeleccionada != 'Today') {
-                  mensajeVacio = 'No hay noticias en esta categoría todavía.';
-                } else {
-                  mensajeVacio = 'Todavía no hay noticias publicadas.';
-                }
-
-                return Text(
-                  mensajeVacio,
-                  style: AppTypography.body2.copyWith(
-                    color: AppColors.neutral600,
-                  ),
-                );
-              }
-
-              // Mostrar noticias
-              return Column(
-                children: documentos.map((doc) {
-                  final noticia = doc.data();
-
-                  final imagen = noticia['imagen'] as String? ?? '';
-
-                  final titulo = noticia['titulo'] as String? ?? 'Sin título';
-
-                  final resumen = noticia['resumen'] as String? ?? '';
-
-                  return Card(
-                    color: AppColors.neutral100,
-                    surfaceTintColor: Colors.transparent,
-                    elevation: 0,
-                    clipBehavior: Clip.antiAlias,
-                    child: InkWell(
-                      onTap: () => _abrirNoticia(noticia),
-                      child: Padding(
-                        padding: const EdgeInsets.all(AppSpacing.sm8),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: AspectRatio(
-                                aspectRatio: 1.85,
-                                child: imagen.isEmpty
-                                    ? ColoredBox(
-                                        color: AppColors.tertiary200,
-                                        child: const Icon(
-                                          Icons.image_outlined,
-                                          color: AppColors.neutral600,
-                                        ),
-                                      )
-                                    : Image.network(
-                                        imagen,
-                                        width: double.infinity,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, _, _) => const Icon(
-                                          Icons.broken_image_outlined,
-                                        ),
-                                      ),
-                              ),
-                            ),
-
-                            const SizedBox(height: 20),
-
-                            // titulo
-                            Text(
-                              titulo,
-                              style: AppTypography.h5.copyWith(
-                                color: AppColors.neutral800,
-                                fontSize: 28,
-                                height: 1.2,
-                              ),
-                            ),
-
-                            const SizedBox(height: 16),
-
-                            // resumen
-                            Text(
-                              resumen,
-                              style: AppTypography.subtitle2.copyWith(
-                                color: AppColors.neutral600,
-                                fontSize: 20,
-                                height: 1.3,
-                              ),
-                            ),
-
-                            const SizedBox(height: 24),
-
-                            // fecha
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.access_time,
-                                  size: 22,
-                                  color: AppColors.neutral500,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  _fecha(noticia['creadoEn'] as Timestamp?),
-                                  style: AppTypography.caption.copyWith(
-                                    color: AppColors.neutral500,
-                                  ),
-                                ),
-                              ],
-                            ),
-
-                            const SizedBox(height: 12),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              );
-            },
-          ),
         ],
       ),
 
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: AppColors.primary500,
-        foregroundColor: AppColors.neutral100,
-        onPressed: _agregarNoticia,
-        tooltip: 'Agregar noticia',
-        child: const Icon(Icons.add),
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: [
+          _buildHome(),
+          const WeeklyView(),
+          const PodcastsView(),
+          const VideoView(),
+          const UserView(),
+        ],
       ),
 
+      floatingActionButton: _selectedIndex == 0
+          ? FloatingActionButton(
+              backgroundColor: AppColors.primary500,
+              foregroundColor: AppColors.neutral100,
+              onPressed: _agregarNoticia,
+              tooltip: 'Agregar noticia',
+              child: const Icon(Icons.add),
+            )
+          : null,
+
       bottomNavigationBar: NavigationBar(
+        indicatorColor: Colors.transparent,
         labelTextStyle: WidgetStateProperty.resolveWith<TextStyle>(
           (states) => AppTypography.caption.copyWith(
             color: states.contains(WidgetState.selected)
-                ? AppColors.secondary600
-                : AppColors.neutral600,
+                ? AppColors.primary500
+                : AppColors.neutral400,
           ),
         ),
         selectedIndex: _selectedIndex,
         onDestinationSelected: (index) {
-          if (index == 2) {
-            Navigator.of(
-              context,
-            ).push(MaterialPageRoute<void>(builder: (_) => const ListsView()));
-            return;
-          }
-
-          if (index == 3) {
-            Navigator.of(
-              context,
-            ).push(MaterialPageRoute<void>(builder: (_) => const FlashView()));
-            return;
-          }
-
+          FocusScope.of(context).unfocus();
           setState(() {
             _selectedIndex = index;
           });
         },
-        destinations: const [
+        destinations: [
           NavigationDestination(
-            icon: Icon(Icons.groups_outlined, color: AppColors.neutral600),
-            selectedIcon: Icon(Icons.groups, color: AppColors.secondary600),
-            label: 'Comunidad',
-          ),
-
-          NavigationDestination(
-            icon: Icon(Icons.search_outlined, color: AppColors.neutral600),
-            selectedIcon: Icon(Icons.search, color: AppColors.secondary600),
-            label: 'Buscar',
-          ),
-
-          NavigationDestination(
-            icon: Icon(
-              Icons.format_list_bulleted_outlined,
-              color: AppColors.neutral600,
+            icon: SvgPicture.asset(
+              'assets/iconos/home.svg',
+              width: 24,
+              height: 24,
+              colorFilter: const ColorFilter.mode(
+                AppColors.neutral400,
+                BlendMode.srcIn,
+              ),
             ),
-            selectedIcon: Icon(
-              Icons.format_list_bulleted,
-              color: AppColors.secondary600,
+            selectedIcon: SvgPicture.asset(
+              'assets/iconos/home.svg',
+              width: 24,
+              height: 24,
+              colorFilter: const ColorFilter.mode(
+                AppColors.primary500,
+                BlendMode.srcIn,
+              ),
             ),
-            label: 'Listas',
+            label: 'Home',
           ),
 
           NavigationDestination(
-            icon: Icon(Icons.flash_on_outlined, color: AppColors.neutral600),
-            selectedIcon: Icon(Icons.flash_on, color: AppColors.secondary600),
-            label: 'Flash',
+            icon: SvgPicture.asset(
+              'assets/iconos/weekly.svg',
+              width: 24,
+              height: 24,
+              colorFilter: const ColorFilter.mode(
+                AppColors.neutral400,
+                BlendMode.srcIn,
+              ),
+            ),
+            selectedIcon: SvgPicture.asset(
+              'assets/iconos/weekly.svg',
+              width: 24,
+              height: 24,
+              colorFilter: const ColorFilter.mode(
+                AppColors.primary500,
+                BlendMode.srcIn,
+              ),
+            ),
+            label: 'Weekly',
+          ),
+
+          NavigationDestination(
+            icon: SvgPicture.asset(
+              'assets/iconos/podcast.svg',
+              width: 24,
+              height: 24,
+              colorFilter: const ColorFilter.mode(
+                AppColors.neutral400,
+                BlendMode.srcIn,
+              ),
+            ),
+            selectedIcon: SvgPicture.asset(
+              'assets/iconos/podcast.svg',
+              width: 24,
+              height: 24,
+              colorFilter: const ColorFilter.mode(
+                AppColors.primary500,
+                BlendMode.srcIn,
+              ),
+            ),
+            label: 'Podcast',
+          ),
+
+          NavigationDestination(
+            icon: SvgPicture.asset(
+              'assets/iconos/video.svg',
+              width: 24,
+              height: 24,
+              colorFilter: const ColorFilter.mode(
+                AppColors.neutral400,
+                BlendMode.srcIn,
+              ),
+            ),
+            selectedIcon: SvgPicture.asset(
+              'assets/iconos/video.svg',
+              width: 24,
+              height: 24,
+              colorFilter: const ColorFilter.mode(
+                AppColors.primary500,
+                BlendMode.srcIn,
+              ),
+            ),
+            label: 'Video',
+          ),
+
+          NavigationDestination(
+            icon: SvgPicture.asset(
+              'assets/iconos/user.svg',
+              width: 24,
+              height: 24,
+              colorFilter: const ColorFilter.mode(
+                AppColors.neutral400,
+                BlendMode.srcIn,
+              ),
+            ),
+            selectedIcon: SvgPicture.asset(
+              'assets/iconos/user.svg',
+              width: 24,
+              height: 24,
+              colorFilter: const ColorFilter.mode(
+                AppColors.primary500,
+                BlendMode.srcIn,
+              ),
+            ),
+            label: 'User',
           ),
         ],
       ),
