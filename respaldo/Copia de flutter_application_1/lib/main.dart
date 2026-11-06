@@ -5,22 +5,19 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import 'firebase_options.dart';
 import 'theme/theme.dart';
 import 'views/lists.dart';
 import 'views/flash.dart';
-
-import 'package:google_sign_in/google_sign_in.dart';
 import 'auth/auth_gate.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Inicializar Firebase
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   // Inicializar Google Sign-In
   await GoogleSignIn.instance.initialize();
@@ -52,13 +49,29 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
   final _articulos = FirebaseFirestore.instance.collection('articulo');
   final _busquedaController = TextEditingController();
   final _picker = ImagePicker();
+
   late final Stream<QuerySnapshot<Map<String, dynamic>>> _noticiasStream;
+
   int _selectedIndex = 0;
   String _busqueda = '';
+  String _categoriaSeleccionada = 'Today';
+
+  // Categorías disponibles
+  final List<String> _categorias = [
+    'Today',
+    'US',
+    'Finance & Economics',
+    'Business',
+    'China',
+    'Asia',
+    'Europe',
+    'Americas',
+  ];
 
   @override
   void initState() {
     super.initState();
+
     _noticiasStream = _articulos
         .orderBy('creadoEn', descending: true)
         .limit(50)
@@ -73,15 +86,14 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
 
   void _mensaje(String texto) {
     if (!mounted) return;
+
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
           content: Text(
             texto,
-            style: AppTypography.body2.copyWith(
-              color: AppColors.neutral100,
-            ),
+            style: AppTypography.body2.copyWith(color: AppColors.neutral100),
           ),
         ),
       );
@@ -89,20 +101,29 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
 
   String _fecha(Timestamp? fecha) {
     if (fecha == null) return 'Fecha pendiente';
+
     final valor = fecha.toDate().toLocal();
+
     String dos(int n) => n.toString().padLeft(2, '0');
+
     return '${dos(valor.day)}/${dos(valor.month)}/${valor.year}';
   }
 
+  // Agregar una noticia
   Future<void> _agregarNoticia() async {
     final formKey = GlobalKey<FormState>();
+
     final tituloController = TextEditingController();
     final autorController = TextEditingController();
     final resumenController = TextEditingController();
     final textoController = TextEditingController();
+
     XFile? imagen;
     bool guardando = false;
     bool publicado = false;
+
+    // Categoría inicial de la noticia
+    String categoriaNoticia = 'US';
 
     try {
       await showModalBottomSheet<void>(
@@ -120,6 +141,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
                     imageQuality: 80,
                     maxWidth: 1600,
                   );
+
                   if (seleccion != null && sheetContext.mounted) {
                     setSheetState(() => imagen = seleccion);
                   }
@@ -129,48 +151,72 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
               }
 
               Future<void> publicar() async {
-                if (guardando || !formKey.currentState!.validate()) return;
+                if (guardando || !formKey.currentState!.validate()) {
+                  return;
+                }
+
                 if (imagen == null) {
                   _mensaje('Selecciona una imagen para la noticia.');
                   return;
                 }
+
                 setSheetState(() => guardando = true);
+
                 Reference? referencia;
+
                 try {
                   final id = _articulos.doc().id;
+
                   final extension = imagen!.name.split('.').last.toLowerCase();
+
                   final tipo = extension == 'png'
                       ? 'image/png'
                       : extension == 'webp'
-                          ? 'image/webp'
-                          : 'image/jpeg';
-                  final sufijo = ['jpg', 'jpeg', 'png', 'webp'].contains(extension)
+                      ? 'image/webp'
+                      : 'image/jpeg';
+
+                  final sufijo =
+                      ['jpg', 'jpeg', 'png', 'webp'].contains(extension)
                       ? extension
                       : 'jpg';
-                  referencia = FirebaseStorage.instance.ref('imagenes/$id.$sufijo');
+
+                  referencia = FirebaseStorage.instance.ref(
+                    'imagenes/$id.$sufijo',
+                  );
+
                   await referencia.putFile(
                     File(imagen!.path),
                     SettableMetadata(contentType: tipo),
                   );
+
                   final url = await referencia.getDownloadURL();
+
+                  // Guardar noticia en Firebase
                   await _articulos.doc(id).set({
                     'titulo': tituloController.text.trim(),
                     'autor': autorController.text.trim(),
                     'resumen': resumenController.text.trim(),
                     'texto': textoController.text.trim(),
+                    'categoria': categoriaNoticia,
                     'imagen': url,
                     'imagenPath': referencia.fullPath,
                     'creadoEn': FieldValue.serverTimestamp(),
                   });
+
                   publicado = true;
-                  if (sheetContext.mounted) Navigator.of(sheetContext).pop();
+
+                  if (sheetContext.mounted) {
+                    Navigator.of(sheetContext).pop();
+                  }
                 } catch (e) {
                   if (referencia != null) {
                     try {
                       await referencia.delete();
                     } catch (_) {}
                   }
+
                   _mensaje('No se pudo publicar la noticia: $e');
+
                   if (sheetContext.mounted) {
                     setSheetState(() => guardando = false);
                   }
@@ -196,11 +242,14 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
                         children: [
                           Text(
                             'Nueva noticia',
-                              style: AppTypography.h6.copyWith(
-                                color: AppColors.primary500,
-                              ),
+                            style: AppTypography.h6.copyWith(
+                              color: AppColors.primary500,
+                            ),
                           ),
+
                           const SizedBox(height: AppSpacing.md16),
+
+                          // Título
                           TextFormField(
                             controller: tituloController,
                             style: AppTypography.body1.copyWith(
@@ -213,56 +262,8 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
                               labelStyle: AppTypography.subtitle1.copyWith(
                                 color: AppColors.neutral600,
                               ),
-                              floatingLabelStyle: AppTypography.subtitle1.copyWith(
-                                color: AppColors.primary500,
-                              ),
-                              errorStyle: AppTypography.caption.copyWith(
-                                color: AppColors.error500,
-                              ),
-                              filled: true,
-                              fillColor: AppColors.tertiary100,
-                              border: OutlineInputBorder(),
-                              enabledBorder: const OutlineInputBorder(
-                                borderSide: BorderSide(
-                                  color: AppColors.neutral300,
-                                ),
-                              ),
-                              focusedBorder: const OutlineInputBorder(
-                                borderSide: BorderSide(
-                                  color: AppColors.primary500,
-                                  width: 2,
-                                ),
-                              ),
-                              errorBorder: const OutlineInputBorder(
-                                borderSide: BorderSide(
-                                  color: AppColors.error500,
-                                ),
-                              ),
-                              focusedErrorBorder: const OutlineInputBorder(
-                                borderSide: BorderSide(
-                                  color: AppColors.error500,
-                                  width: 2,
-                                ),
-                              ),
-                            ),
-                            validator: (valor) => valor == null || valor.trim().isEmpty
-                                ? 'Ingresa un título'
-                                : null,
-                          ),
-                          const SizedBox(height: AppSpacing.md16),
-                          TextFormField(
-                            controller: autorController,
-                            style: AppTypography.body1,
-                            enabled: !guardando,
-                            textCapitalization: TextCapitalization.words,
-                            decoration: InputDecoration(
-                              labelText: 'Autor',
-                              labelStyle: AppTypography.subtitle1.copyWith(
-                                color: AppColors.neutral600,
-                              ),
-                              floatingLabelStyle: AppTypography.subtitle1.copyWith(
-                                color: AppColors.primary500,
-                              ),
+                              floatingLabelStyle: AppTypography.subtitle1
+                                  .copyWith(color: AppColors.primary500),
                               errorStyle: AppTypography.caption.copyWith(
                                 color: AppColors.error500,
                               ),
@@ -292,11 +293,121 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
                                 ),
                               ),
                             ),
-                            validator: (valor) => valor == null || valor.trim().isEmpty
+                            validator: (valor) =>
+                                valor == null || valor.trim().isEmpty
+                                ? 'Ingresa un título'
+                                : null,
+                          ),
+
+                          const SizedBox(height: AppSpacing.md16),
+
+                          // Autor
+                          TextFormField(
+                            controller: autorController,
+                            style: AppTypography.body1,
+                            enabled: !guardando,
+                            textCapitalization: TextCapitalization.words,
+                            decoration: InputDecoration(
+                              labelText: 'Autor',
+                              labelStyle: AppTypography.subtitle1.copyWith(
+                                color: AppColors.neutral600,
+                              ),
+                              floatingLabelStyle: AppTypography.subtitle1
+                                  .copyWith(color: AppColors.primary500),
+                              errorStyle: AppTypography.caption.copyWith(
+                                color: AppColors.error500,
+                              ),
+                              filled: true,
+                              fillColor: AppColors.tertiary100,
+                              border: const OutlineInputBorder(),
+                              enabledBorder: const OutlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: AppColors.neutral300,
+                                ),
+                              ),
+                              focusedBorder: const OutlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: AppColors.primary500,
+                                  width: 2,
+                                ),
+                              ),
+                              errorBorder: const OutlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: AppColors.error500,
+                                ),
+                              ),
+                              focusedErrorBorder: const OutlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: AppColors.error500,
+                                  width: 2,
+                                ),
+                              ),
+                            ),
+                            validator: (valor) =>
+                                valor == null || valor.trim().isEmpty
                                 ? 'Ingresa el autor'
                                 : null,
                           ),
+
                           const SizedBox(height: AppSpacing.md16),
+
+                          // Selector de categoría
+                          Text(
+                            'Categoría',
+                            style: AppTypography.subtitle1.copyWith(
+                              color: AppColors.neutral700,
+                            ),
+                          ),
+
+                          const SizedBox(height: AppSpacing.sm8),
+
+                          DropdownButtonFormField<String>(
+                            initialValue: categoriaNoticia,
+                            isExpanded: true,
+                            decoration: InputDecoration(
+                              filled: true,
+                              fillColor: AppColors.tertiary100,
+                              border: const OutlineInputBorder(),
+                              enabledBorder: const OutlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: AppColors.neutral300,
+                                ),
+                              ),
+                              focusedBorder: const OutlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: AppColors.secondary300,
+                                  width: 2,
+                                ),
+                              ),
+                            ),
+                            items: _categorias
+                                .where((categoria) => categoria != 'Today')
+                                .map((categoria) {
+                                  return DropdownMenuItem<String>(
+                                    value: categoria,
+                                    child: Text(
+                                      categoria,
+                                      style: AppTypography.body1.copyWith(
+                                        color: AppColors.neutral700,
+                                      ),
+                                    ),
+                                  );
+                                })
+                                .toList(),
+                            onChanged: guardando
+                                ? null
+                                : (valor) {
+                                    if (valor != null) {
+                                      setSheetState(() {
+                                        categoriaNoticia = valor;
+                                      });
+                                    }
+                                  },
+                          ),
+
+                          const SizedBox(height: AppSpacing.md16),
+
+                          // Resumen
                           TextFormField(
                             controller: resumenController,
                             style: AppTypography.body1,
@@ -308,9 +419,8 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
                               labelStyle: AppTypography.subtitle1.copyWith(
                                 color: AppColors.neutral600,
                               ),
-                              floatingLabelStyle: AppTypography.subtitle1.copyWith(
-                                color: AppColors.primary500,
-                              ),
+                              floatingLabelStyle: AppTypography.subtitle1
+                                  .copyWith(color: AppColors.primary500),
                               errorStyle: AppTypography.caption.copyWith(
                                 color: AppColors.error500,
                               ),
@@ -340,11 +450,15 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
                                 ),
                               ),
                             ),
-                            validator: (valor) => valor == null || valor.trim().isEmpty
+                            validator: (valor) =>
+                                valor == null || valor.trim().isEmpty
                                 ? 'Ingresa un resumen'
                                 : null,
                           ),
+
                           const SizedBox(height: AppSpacing.md16),
+
+                          // Texto de la noticia
                           TextFormField(
                             controller: textoController,
                             style: AppTypography.body1,
@@ -358,9 +472,8 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
                               labelStyle: AppTypography.subtitle1.copyWith(
                                 color: AppColors.neutral600,
                               ),
-                              floatingLabelStyle: AppTypography.subtitle1.copyWith(
-                                color: AppColors.primary500,
-                              ),
+                              floatingLabelStyle: AppTypography.subtitle1
+                                  .copyWith(color: AppColors.primary500),
                               errorStyle: AppTypography.caption.copyWith(
                                 color: AppColors.error500,
                               ),
@@ -390,11 +503,15 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
                                 ),
                               ),
                             ),
-                            validator: (valor) => valor == null || valor.trim().isEmpty
+                            validator: (valor) =>
+                                valor == null || valor.trim().isEmpty
                                 ? 'Ingresa el texto'
                                 : null,
                           ),
+
                           const SizedBox(height: AppSpacing.md16),
+
+                          // Imagen seleccionada
                           if (imagen != null) ...[
                             ClipRRect(
                               borderRadius: BorderRadius.circular(12),
@@ -407,6 +524,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
                             ),
                             const SizedBox(height: AppSpacing.sm8),
                           ],
+
                           OutlinedButton.icon(
                             style: OutlinedButton.styleFrom(
                               textStyle: AppTypography.button,
@@ -416,19 +534,28 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
                               ),
                             ),
                             onPressed: guardando ? null : seleccionarImagen,
-                            icon: const Icon(Icons.add_photo_alternate_outlined),
-                            label: Text(imagen == null
-                                ? 'Seleccionar imagen'
-                                : 'Cambiar imagen'),
+                            icon: const Icon(
+                              Icons.add_photo_alternate_outlined,
+                            ),
+                            label: Text(
+                              imagen == null
+                                  ? 'Seleccionar imagen'
+                                  : 'Cambiar imagen',
+                            ),
                           ),
+
                           const SizedBox(height: AppSpacing.sm8),
+
                           Text(
                             'Fecha: ${_fecha(Timestamp.now())}',
                             style: AppTypography.caption.copyWith(
                               color: AppColors.neutral500,
                             ),
                           ),
+
                           const SizedBox(height: AppSpacing.lg24),
+
+                          // Botón publicar
                           SizedBox(
                             width: double.infinity,
                             child: FilledButton.icon(
@@ -442,10 +569,14 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
                                   ? const SizedBox(
                                       width: 18,
                                       height: 18,
-                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
                                     )
                                   : const Icon(Icons.check),
-                              label: Text(guardando ? 'Publicando…' : 'Publicar noticia'),
+                              label: Text(
+                                guardando ? 'Publicando…' : 'Publicar noticia',
+                              ),
                             ),
                           ),
                         ],
@@ -458,10 +589,14 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
           );
         },
       );
-      if (publicado) _mensaje('Noticia publicada correctamente');
+
+      if (publicado) {
+        _mensaje('Noticia publicada correctamente');
+      }
     } finally {
       // Esperar a que termine la animación de cierre del Bottom Sheet.
       await Future<void>.delayed(const Duration(milliseconds: 350));
+
       tituloController.dispose();
       autorController.dispose();
       resumenController.dispose();
@@ -469,6 +604,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
     }
   }
 
+  // Abrir detalle de una noticia
   void _abrirNoticia(Map<String, dynamic> noticia) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -479,9 +615,9 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
-      backgroundColor: AppColors.tertiary100,
+      backgroundColor: AppColors.neutral100,
+
       appBar: AppBar(
         backgroundColor: AppColors.neutral100,
         foregroundColor: AppColors.neutral700,
@@ -489,45 +625,99 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
         leading: IconButton(icon: const Icon(Icons.menu), onPressed: () {}),
         title: Text(
           'The Economist',
-          style: AppTypography.h5.copyWith(
-            color: AppColors.primary500,
-          ),
+          style: AppTypography.h5.copyWith(color: AppColors.primary500),
         ),
         centerTitle: true,
-        actions: [IconButton(icon: const Icon(Icons.search), onPressed: () => setState(() => _selectedIndex = 1))],
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            onPressed: () {
+              setState(() {
+                _selectedIndex = 1;
+              });
+            },
+          ),
+        ],
       ),
+
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.md16),
         children: [
-          Text(_selectedIndex == 1 ? 'Buscar noticias' : 'Últimas noticias',
-              style: AppTypography.h4.copyWith(
-                color: AppColors.neutral700,
+          // Chips de categorías: solo aparecen en la pantalla principal.
+          if (_selectedIndex == 0) ...[
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: _categorias.map((categoria) {
+                  final seleccionada = _categoriaSeleccionada == categoria;
+
+                  return Padding(
+                    padding: const EdgeInsets.only(right: AppSpacing.sm8),
+                    child: ChoiceChip(
+                      label: Text(
+                        categoria,
+                        style: AppTypography.subtitle2.copyWith(
+                          color: seleccionada
+                              ? AppColors.neutral100
+                              : AppColors.secondary600,
+                        ),
+                      ),
+                      selected: seleccionada,
+                      showCheckmark: false,
+                      backgroundColor: AppColors.neutral100,
+                      selectedColor: AppColors.secondary300,
+                      side: BorderSide(
+                        color: seleccionada
+                            ? AppColors.secondary300
+                            : AppColors.secondary100,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      onSelected: (_) {
+                        setState(() {
+                          _categoriaSeleccionada = categoria;
+                        });
+                      },
+                    ),
+                  );
+                }).toList(),
               ),
             ),
+            const SizedBox(height: AppSpacing.md16),
+          ],
+
+          Text(
+            _selectedIndex == 1 ? 'Buscar noticias' : 'TOP STORIES',
+            textAlign: TextAlign.center,
+            style: AppTypography.subtitle1.copyWith(
+              color: AppColors.primary500,
+            ),
+          ),
+
           const SizedBox(height: AppSpacing.md16),
+
+          // Buscador
           if (_selectedIndex == 1) ...[
             TextField(
               controller: _busquedaController,
-              style: AppTypography.body1.copyWith(
-                color: AppColors.neutral700,
-              ),
-              onChanged: (valor) => setState(() => _busqueda = valor.trim().toLowerCase()),
+              style: AppTypography.body1.copyWith(color: AppColors.neutral700),
+              onChanged: (valor) {
+                setState(() {
+                  _busqueda = valor.trim().toLowerCase();
+                });
+              },
               decoration: InputDecoration(
                 hintText: 'Buscar por título o autor',
                 hintStyle: AppTypography.body2.copyWith(
                   color: AppColors.neutral500,
                 ),
-                prefixIcon: Icon(
-                  Icons.search,
-                  color: AppColors.secondary300,
-                ),
+                prefixIcon: Icon(Icons.search, color: AppColors.secondary300),
                 filled: true,
                 fillColor: AppColors.neutral100,
-                border: OutlineInputBorder(),
+                border: const OutlineInputBorder(),
                 enabledBorder: const OutlineInputBorder(
-                  borderSide: BorderSide(
-                    color: AppColors.neutral300,
-                  ),
+                  borderSide: BorderSide(color: AppColors.neutral300),
                 ),
                 focusedBorder: const OutlineInputBorder(
                   borderSide: BorderSide(
@@ -539,6 +729,8 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
             ),
             const SizedBox(height: AppSpacing.md16),
           ],
+
+          // Cargar noticias desde Firebase
           StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
             stream: _noticiasStream,
             builder: (context, snapshot) {
@@ -550,45 +742,87 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
                   ),
                 );
               }
+
               if (!snapshot.hasData) {
                 return const Center(child: CircularProgressIndicator());
               }
+
+              // Filtrar noticias por categoría o búsqueda.
               final documentos = snapshot.data!.docs.where((doc) {
-                if (_selectedIndex != 1 || _busqueda.isEmpty) return true;
                 final datos = doc.data();
-                return (datos['titulo'] ?? '').toString().toLowerCase().contains(_busqueda) ||
-                    (datos['autor'] ?? '').toString().toLowerCase().contains(_busqueda);
+
+                // Filtro de categorías
+                if (_selectedIndex == 0 && _categoriaSeleccionada != 'Today') {
+                  final categoria = (datos['categoria'] ?? '').toString();
+
+                  if (categoria != _categoriaSeleccionada) {
+                    return false;
+                  }
+                }
+
+                // Filtro de búsqueda
+                if (_selectedIndex == 1 && _busqueda.isNotEmpty) {
+                  final titulo = (datos['titulo'] ?? '')
+                      .toString()
+                      .toLowerCase();
+
+                  final autor = (datos['autor'] ?? '').toString().toLowerCase();
+
+                  return titulo.contains(_busqueda) ||
+                      autor.contains(_busqueda);
+                }
+
+                return true;
               }).toList();
+
+              // Mensaje cuando no hay resultados
               if (documentos.isEmpty) {
-                return Text(_busqueda.isNotEmpty && _selectedIndex == 1
-                    ? 'No se encontraron noticias.'
-                    : 'Todavía no hay noticias publicadas.',
-                    style: AppTypography.body2.copyWith(
-                      color: AppColors.neutral600,
-                    ),
-                  );
+                String mensajeVacio;
+
+                if (_selectedIndex == 1 && _busqueda.isNotEmpty) {
+                  mensajeVacio = 'No se encontraron noticias.';
+                } else if (_selectedIndex == 0 &&
+                    _categoriaSeleccionada != 'Today') {
+                  mensajeVacio = 'No hay noticias en esta categoría todavía.';
+                } else {
+                  mensajeVacio = 'Todavía no hay noticias publicadas.';
+                }
+
+                return Text(
+                  mensajeVacio,
+                  style: AppTypography.body2.copyWith(
+                    color: AppColors.neutral600,
+                  ),
+                );
               }
+
+              // Mostrar noticias
               return Column(
                 children: documentos.map((doc) {
                   final noticia = doc.data();
+
                   final imagen = noticia['imagen'] as String? ?? '';
+
                   final titulo = noticia['titulo'] as String? ?? 'Sin título';
+
                   final resumen = noticia['resumen'] as String? ?? '';
+
                   return Card(
                     color: AppColors.neutral100,
                     surfaceTintColor: Colors.transparent,
+                    elevation: 0,
                     clipBehavior: Clip.antiAlias,
                     child: InkWell(
                       onTap: () => _abrirNoticia(noticia),
                       child: Padding(
                         padding: const EdgeInsets.all(AppSpacing.sm8),
-                        child: Row(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             ClipRRect(
                               borderRadius: BorderRadius.circular(8),
-                              child: SizedBox(
-                                width: 96,
-                                height: 96,
+                              child: AspectRatio(
+                                aspectRatio: 1.85,
                                 child: imagen.isEmpty
                                     ? ColoredBox(
                                         color: AppColors.tertiary200,
@@ -599,45 +833,60 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
                                       )
                                     : Image.network(
                                         imagen,
+                                        width: double.infinity,
                                         fit: BoxFit.cover,
-                                        errorBuilder: (_, _, _) =>
-                                            const Icon(Icons.broken_image_outlined),
+                                        errorBuilder: (_, _, _) => const Icon(
+                                          Icons.broken_image_outlined,
+                                        ),
                                       ),
                               ),
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    titulo,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: AppTypography.h6.copyWith(
-                                      color: AppColors.neutral700,
-                                    ),
-                                  ),
-                                  const SizedBox(height: AppSpacing.xs4),
-                                  Text(
-                                    resumen,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: AppTypography.body2.copyWith(
-                                      color: AppColors.neutral600,
-                                    ),
-                                  ),
-                                  const SizedBox(height: AppSpacing.xs4),
-                                  Text(
-                                    _fecha(noticia['creadoEn'] as Timestamp?),
-                                    style: AppTypography.caption.copyWith(
-                                      color: AppColors.neutral500,
-                                    ),
-                                  ),
-                                ],
+
+                            const SizedBox(height: 20),
+
+                            // titulo
+                            Text(
+                              titulo,
+                              style: AppTypography.h5.copyWith(
+                                color: AppColors.neutral800,
+                                fontSize: 28,
+                                height: 1.2,
                               ),
                             ),
+
+                            const SizedBox(height: 16),
+
+                            // resumen
+                            Text(
+                              resumen,
+                              style: AppTypography.subtitle2.copyWith(
+                                color: AppColors.neutral600,
+                                fontSize: 20,
+                                height: 1.3,
+                              ),
+                            ),
+
+                            const SizedBox(height: 24),
+
+                            // fecha
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.access_time,
+                                  size: 22,
+                                  color: AppColors.neutral500,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  _fecha(noticia['creadoEn'] as Timestamp?),
+                                  style: AppTypography.caption.copyWith(
+                                    color: AppColors.neutral500,
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(height: 12),
                           ],
                         ),
                       ),
@@ -649,6 +898,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
           ),
         ],
       ),
+
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppColors.primary500,
         foregroundColor: AppColors.neutral100,
@@ -656,52 +906,45 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
         tooltip: 'Agregar noticia',
         child: const Icon(Icons.add),
       ),
+
       bottomNavigationBar: NavigationBar(
         labelTextStyle: WidgetStateProperty.resolveWith<TextStyle>(
           (states) => AppTypography.caption.copyWith(
             color: states.contains(WidgetState.selected)
-              ? AppColors.secondary600
-              : AppColors.neutral600,
+                ? AppColors.secondary600
+                : AppColors.neutral600,
           ),
         ),
         selectedIndex: _selectedIndex,
         onDestinationSelected: (index) {
           if (index == 2) {
-            Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const ListsView()),
-            );
+            Navigator.of(
+              context,
+            ).push(MaterialPageRoute<void>(builder: (_) => const ListsView()));
             return;
           }
+
           if (index == 3) {
-            Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const FlashView()),
-            );
+            Navigator.of(
+              context,
+            ).push(MaterialPageRoute<void>(builder: (_) => const FlashView()));
             return;
           }
-          setState(() => _selectedIndex = index);
+
+          setState(() {
+            _selectedIndex = index;
+          });
         },
         destinations: const [
           NavigationDestination(
-            icon: Icon(
-              Icons.groups_outlined,
-              color: AppColors.neutral600,
-            ),
-            selectedIcon: Icon(
-              Icons.groups,
-              color: AppColors.secondary600,
-            ),
+            icon: Icon(Icons.groups_outlined, color: AppColors.neutral600),
+            selectedIcon: Icon(Icons.groups, color: AppColors.secondary600),
             label: 'Comunidad',
           ),
 
           NavigationDestination(
-            icon: Icon(
-              Icons.search_outlined,
-              color: AppColors.neutral600,
-            ),
-            selectedIcon: Icon(
-              Icons.search,
-              color: AppColors.secondary600,
-            ),
+            icon: Icon(Icons.search_outlined, color: AppColors.neutral600),
+            selectedIcon: Icon(Icons.search, color: AppColors.secondary600),
             label: 'Buscar',
           ),
 
@@ -718,14 +961,8 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
           ),
 
           NavigationDestination(
-            icon: Icon(
-              Icons.flash_on_outlined,
-              color: AppColors.neutral600,
-            ),
-            selectedIcon: Icon(
-              Icons.flash_on,
-              color: AppColors.secondary600,
-            ),
+            icon: Icon(Icons.flash_on_outlined, color: AppColors.neutral600),
+            selectedIcon: Icon(Icons.flash_on, color: AppColors.secondary600),
             label: 'Flash',
           ),
         ],
@@ -734,6 +971,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
   }
 }
 
+// Pantalla de detalle de una noticia
 class DetalleNoticiaScreen extends StatelessWidget {
   const DetalleNoticiaScreen({super.key, required this.noticia});
 
@@ -743,25 +981,26 @@ class DetalleNoticiaScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final imagen = noticia['imagen'] as String? ?? '';
     final fecha = noticia['creadoEn'] as Timestamp?;
+
     final fechaTexto = fecha == null
         ? 'Fecha pendiente'
         : '${fecha.toDate().toLocal().day.toString().padLeft(2, '0')}/'
-            '${fecha.toDate().toLocal().month.toString().padLeft(2, '0')}/'
-            '${fecha.toDate().toLocal().year}';
+              '${fecha.toDate().toLocal().month.toString().padLeft(2, '0')}/'
+              '${fecha.toDate().toLocal().year}';
 
     return Scaffold(
       backgroundColor: AppColors.tertiary100,
+
       appBar: AppBar(
         backgroundColor: AppColors.neutral100,
         foregroundColor: AppColors.neutral700,
         surfaceTintColor: Colors.transparent,
         title: Text(
           'Noticia',
-          style: AppTypography.h6.copyWith(
-            color: AppColors.primary500,
-          ),
+          style: AppTypography.h6.copyWith(color: AppColors.primary500),
         ),
       ),
+
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.md16),
         children: [
@@ -779,34 +1018,36 @@ class DetalleNoticiaScreen extends StatelessWidget {
                 ),
               ),
             ),
+
             const SizedBox(height: AppSpacing.lg24),
           ],
+
           Text(
             noticia['titulo'] as String? ?? 'Sin título',
-              style: AppTypography.h5.copyWith(
-                color: AppColors.neutral700,
-              ),
-            ),
+            style: AppTypography.h5.copyWith(color: AppColors.neutral700),
+          ),
+
           const SizedBox(height: AppSpacing.sm8),
+
           Text(
             '${noticia['autor'] ?? 'Autor desconocido'} · $fechaTexto',
-              style: AppTypography.caption.copyWith(
-                color: AppColors.neutral500,
-              ),
-            ),
+            style: AppTypography.caption.copyWith(color: AppColors.neutral500),
+          ),
+
           const SizedBox(height: AppSpacing.lg24),
+
           Text(
             noticia['resumen'] as String? ?? '',
-              style: AppTypography.subtitle1.copyWith(
-                color: AppColors.secondary600,
-              ),
+            style: AppTypography.subtitle1.copyWith(
+              color: AppColors.secondary600,
             ),
+          ),
+
           const SizedBox(height: AppSpacing.md16),
+
           Text(
             noticia['texto'] as String? ?? '',
-            style: AppTypography.body1.copyWith(
-              color: AppColors.neutral700,
-            ),
+            style: AppTypography.body1.copyWith(color: AppColors.neutral700),
           ),
         ],
       ),

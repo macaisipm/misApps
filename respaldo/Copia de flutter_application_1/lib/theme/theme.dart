@@ -223,7 +223,7 @@ class AppTypography {
     static const TextStyle subtitle1 = TextStyle(
         fontFamily: fontFamily,
         fontSize: 17,
-        fontWeight: FontWeight.w400,
+        fontWeight: FontWeight.w600,
         letterSpacing: 0.15,
     );
 
