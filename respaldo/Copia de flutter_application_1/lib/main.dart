@@ -883,8 +883,11 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
                             ],
                           ),
 
+                          //divider
                           Padding(
-                            padding: const EdgeInsets.only(top: AppMargin.relaxed24),
+                            padding: const EdgeInsets.only(
+                              top: AppMargin.relaxed24,
+                            ),
                             child: const Divider(
                               color: AppColors.neutral300,
                               thickness: 1,
@@ -913,6 +916,10 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
         backgroundColor: AppColors.neutral100,
         foregroundColor: AppColors.neutral700,
         surfaceTintColor: Colors.transparent,
+
+        elevation: 4,
+        shadowColor: AppColors.tertiary100,
+
         leading: _selectedIndex == 0
             ? IconButton(icon: const Icon(Icons.menu), onPressed: () {})
             : null,
@@ -957,7 +964,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
         index: _selectedIndex,
         children: [
           _buildHome(),
-          const WeeklyView(),
+          WeeklyView(onAbrirNoticia: _abrirNoticia),
           const PodcastsView(),
           const VideoView(),
           const UserView(),
@@ -968,6 +975,11 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
           ? FloatingActionButton(
               backgroundColor: AppColors.primary500,
               foregroundColor: AppColors.neutral100,
+
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppShapes.radius24),
+              ),
+
               onPressed: _agregarNoticia,
               tooltip: 'Agregar noticia',
               child: const Icon(Icons.add),
@@ -1106,7 +1118,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
   }
 }
 
-// Pantalla de detalle de una noticia
+// detalle de la noticia
 class DetalleNoticiaScreen extends StatelessWidget {
   const DetalleNoticiaScreen({super.key, required this.noticia});
 
@@ -1124,21 +1136,108 @@ class DetalleNoticiaScreen extends StatelessWidget {
               '${fecha.toDate().toLocal().year}';
 
     return Scaffold(
-      backgroundColor: AppColors.tertiary100,
+      backgroundColor: AppColors.neutral100,
 
+      //appbar noticia detallada
       appBar: AppBar(
         backgroundColor: AppColors.neutral100,
         foregroundColor: AppColors.neutral700,
         surfaceTintColor: Colors.transparent,
-        title: Text(
-          'Noticia',
-          style: AppTypography.h6.copyWith(color: AppColors.primary500),
+
+        elevation: 4,
+        shadowColor: AppColors.tertiary100,
+
+        //retroceder icono
+        leading: IconButton(
+          tooltip: 'Volver',
+          icon: SvgPicture.asset(
+            'assets/iconos/retroceder.svg',
+            width: 24,
+            height: 24,
+            colorFilter: const ColorFilter.mode(
+              AppColors.secondary300,
+              BlendMode.srcIn,
+            ),
+          ),
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
         ),
+
+        title: Text(
+          'Home',
+          style: AppTypography.h6.copyWith(color: AppColors.secondary300),
+        ),
+
+        actions: [
+          SvgPicture.asset(
+            'assets/iconos/letra.svg',
+            width: 20,
+            height: 20,
+            colorFilter: const ColorFilter.mode(
+              AppColors.secondary300,
+              BlendMode.srcIn,
+            ),
+          ),
+
+          const SizedBox(width: AppGap.spacious16),
+
+          SvgPicture.asset(
+            'assets/iconos/bookmark.svg',
+            width: 24,
+            height: 24,
+            colorFilter: const ColorFilter.mode(
+              AppColors.secondary300,
+              BlendMode.srcIn,
+            ),
+          ),
+
+          const SizedBox(width: AppGap.spacious16),
+
+          SvgPicture.asset(
+            'assets/iconos/share.svg',
+            width: 24,
+            height: 24,
+            colorFilter: const ColorFilter.mode(
+              AppColors.secondary300,
+              BlendMode.srcIn,
+            ),
+          ),
+
+          const SizedBox(width: AppGap.spacious16),
+        ],
       ),
 
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.md16),
         children: [
+          //caption detalle noticia
+          Text(
+            noticia['categoria'] as String? ?? 'Sin título',
+            style: AppTypography.overline.copyWith(color: AppColors.primary500),
+          ),
+
+          const SizedBox(height: AppSpacing.md16),
+
+          //titulo detalle noticia
+          Text(
+            noticia['titulo'] as String? ?? 'Sin título',
+            style: AppTypography.h5.copyWith(color: AppColors.neutral700),
+          ),
+
+          const SizedBox(height: AppSpacing.md16),
+
+          //resumen detalle noticia
+          Text(
+            noticia['resumen'] as String? ?? '',
+            style: AppTypography.subtitle1.copyWith(
+              color: AppColors.neutral600,
+            ),
+          ),
+
+          const SizedBox(height: AppSpacing.md16),
+
+          //imagen
           if (imagen.isNotEmpty) ...[
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
@@ -1154,37 +1253,49 @@ class DetalleNoticiaScreen extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: AppSpacing.lg24),
+            const SizedBox(height: AppSpacing.md16),
           ],
 
-          Text(
-            noticia['titulo'] as String? ?? 'Sin título',
-            style: AppTypography.h5.copyWith(color: AppColors.neutral700),
-          ),
-
-          const SizedBox(height: AppSpacing.sm8),
-
+          // autor detalle noticia
           Text(
             '${noticia['autor'] ?? 'Autor desconocido'} · $fechaTexto',
-            style: AppTypography.caption.copyWith(color: AppColors.neutral500),
-          ),
-
-          const SizedBox(height: AppSpacing.lg24),
-
-          Text(
-            noticia['resumen'] as String? ?? '',
-            style: AppTypography.subtitle1.copyWith(
-              color: AppColors.secondary600,
-            ),
+            style: AppTypography.caption.copyWith(color: AppColors.neutral600),
           ),
 
           const SizedBox(height: AppSpacing.md16),
 
+          Divider(color: AppColors.neutral300, thickness: 2, height: 1),
+
+          const SizedBox(height: AppSpacing.md16),
+
+          // noticia detallada
           Text(
             noticia['texto'] as String? ?? '',
-            style: AppTypography.body1.copyWith(color: AppColors.neutral700),
+            style: AppTypography.body1.copyWith(color: AppColors.neutral800),
           ),
         ],
+      ),
+
+      floatingActionButton: SizedBox(
+        width: 40,
+        height: 40,
+        child: FloatingActionButton(
+          backgroundColor: AppColors.secondary300,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppShapes.radius24),
+          ),
+          onPressed: () {},
+          tooltip: 'Escuchar noticia',
+          child: SvgPicture.asset(
+            'assets/iconos/video.svg',
+            width: 20,
+            height: 20,
+            colorFilter: const ColorFilter.mode(
+              AppColors.neutral100,
+              BlendMode.srcIn,
+            ),
+          ),
+        ),
       ),
     );
   }
