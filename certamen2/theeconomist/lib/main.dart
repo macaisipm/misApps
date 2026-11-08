@@ -19,10 +19,10 @@ import 'auth/auth_gate.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Inicializar Firebase
+  // inicializar Firebase
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  // Inicializar Google Sign-In
+  // inicializar Google Sign-In
   await GoogleSignIn.instance.initialize();
 
   runApp(const MainApp());
@@ -60,7 +60,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
   String _busqueda = '';
   String _categoriaSeleccionada = 'Today';
 
-  // Categorías disponibles
+  // categorias
   final List<String> _categorias = [
     'Today',
     'US',
@@ -113,7 +113,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
     return '${dos(valor.day)}/${dos(valor.month)}/${valor.year}';
   }
 
-  // Agregar una noticia
+  // agregar una noticia
   Future<void> _agregarNoticia() async {
     final formKey = GlobalKey<FormState>();
 
@@ -126,7 +126,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
     bool guardando = false;
     bool publicado = false;
 
-    // Categoría inicial de la noticia
+    // categoria inicial de la noticia
     String categoriaNoticia = 'US';
 
     try {
@@ -195,7 +195,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
 
                   final url = await referencia.getDownloadURL();
 
-                  // Guardar noticia en Firebase
+                  // guardar noticia en Firebase
                   await _articulos.doc(id).set({
                     'titulo': tituloController.text.trim(),
                     'autor': autorController.text.trim(),
@@ -253,7 +253,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
 
                           const SizedBox(height: AppSpacing.md16),
 
-                          // Título
+                          // titulo
                           TextFormField(
                             controller: tituloController,
                             style: AppTypography.body1.copyWith(
@@ -305,7 +305,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
 
                           const SizedBox(height: AppSpacing.md16),
 
-                          // Autor
+                          // autor
                           TextFormField(
                             controller: autorController,
                             style: AppTypography.body1,
@@ -355,7 +355,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
 
                           const SizedBox(height: AppSpacing.md16),
 
-                          // Selector de categoría
+                          // selector de categoria
                           Text(
                             'Categoría',
                             style: AppTypography.subtitle1.copyWith(
@@ -411,7 +411,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
 
                           const SizedBox(height: AppSpacing.md16),
 
-                          // Resumen
+                          // resumen
                           TextFormField(
                             controller: resumenController,
                             style: AppTypography.body1,
@@ -462,7 +462,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
 
                           const SizedBox(height: AppSpacing.md16),
 
-                          // Texto de la noticia
+                          // texto de la noticia
                           TextFormField(
                             controller: textoController,
                             style: AppTypography.body1,
@@ -515,7 +515,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
 
                           const SizedBox(height: AppSpacing.md16),
 
-                          // Imagen seleccionada
+                          // imagen seleccionada
                           if (imagen != null) ...[
                             ClipRRect(
                               borderRadius: BorderRadius.circular(12),
@@ -559,7 +559,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
 
                           const SizedBox(height: AppSpacing.lg24),
 
-                          // Botón publicar
+                          // Boton publicar
                           SizedBox(
                             width: double.infinity,
                             child: FilledButton.icon(
@@ -598,7 +598,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
         _mensaje('Noticia publicada correctamente');
       }
     } finally {
-      // Esperar a que termine la animación de cierre del Bottom Sheet.
+
       await Future<void>.delayed(const Duration(milliseconds: 350));
 
       tituloController.dispose();
@@ -608,7 +608,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
     }
   }
 
-  // Abrir detalle de una noticia
+  // detalle de una noticia
   void _abrirNoticia(Map<String, dynamic> noticia) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -621,7 +621,8 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.md16),
       children: [
-        // Chips de categorías
+
+        // chips de categorias
         if (!_mostrandoBuscador) ...[
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -673,7 +674,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
 
         const SizedBox(height: AppSpacing.md16),
 
-        // Buscador
+        // buscador
         if (_mostrandoBuscador) ...[
           TextField(
             controller: _busquedaController,
@@ -703,7 +704,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
           const SizedBox(height: AppSpacing.md16),
         ],
 
-        // Cargar noticias desde Firebase
+        // cargar noticias desde Firebase
         StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
           stream: _noticiasStream,
           builder: (context, snapshot) {
@@ -718,11 +719,11 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
               return const Center(child: CircularProgressIndicator());
             }
 
-            // Filtrar noticias por categoría o búsqueda.
+            // filtrar noticias 
             final documentos = snapshot.data!.docs.where((doc) {
               final datos = doc.data();
 
-              // Filtro de categorías
+              // filtro de categorias
               if (!_mostrandoBuscador && _categoriaSeleccionada != 'Today') {
                 final categoria = (datos['categoria'] ?? '').toString();
 
@@ -731,7 +732,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
                 }
               }
 
-              // Filtro de búsqueda
+              // filtro de busqueda
               if (_mostrandoBuscador && _busqueda.isNotEmpty) {
                 final titulo = (datos['titulo'] ?? '').toString().toLowerCase();
 
@@ -743,7 +744,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
               return true;
             }).toList();
 
-            // Mensaje cuando no hay resultados
+            // mensaje cuando no hay resultados
             if (documentos.isEmpty) {
               String mensajeVacio;
 
@@ -764,7 +765,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
               );
             }
 
-            // Mostrar noticias
+            // mostrar noticias
             return Column(
               children: documentos.map((doc) {
                 final noticia = doc.data();
