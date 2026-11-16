@@ -379,7 +379,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
                               ),
                               focusedBorder: const OutlineInputBorder(
                                 borderSide: BorderSide(
-                                  color: AppColors.secondary300,
+                                  color: AppColors.primary500,
                                   width: 2,
                                 ),
                               ),
