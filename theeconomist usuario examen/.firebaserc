@@ -1,0 +1,13 @@
+{
+  "projects": {},
+  "targets": {
+    "economist26pm": {
+      "hosting": {
+        "examen": [
+          "the-economist-examen"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}
