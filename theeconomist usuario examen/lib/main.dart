@@ -255,6 +255,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
 
             // Mostrar noticias
             return Column(
+              key: ValueKey(_categoriaSeleccionada),
               children: documentos.map((doc) {
                 final noticia = doc.data();
 
@@ -267,6 +268,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
                 final tema = noticia['categoria'] as String? ?? '';
 
                 return Card(
+                  key: ValueKey(doc.id),
                   color: AppColors.neutral100,
                   surfaceTintColor: Colors.transparent,
                   elevation: 0,
@@ -292,7 +294,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
                                     )
                                   : Image.network(
                                       imagen,
-                                      webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
+                                      key: ValueKey(imagen),
                                       width: double.infinity,
                                       fit: BoxFit.cover,
                                       errorBuilder: (_, _, _) => const Icon(

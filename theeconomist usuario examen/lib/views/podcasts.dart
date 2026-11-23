@@ -52,8 +52,13 @@ String _formato(Duration d) {
 
 Widget _portada({String url = '', XFile? archivo, double proporcion = 1}) {
   final ImageProvider? imagen = archivo != null
-      ? FileImage(File(archivo.path))
-      : (url.isEmpty ? null : NetworkImage(url));
+    ? FileImage(File(archivo.path))
+    : (url.isEmpty
+        ? null
+        : NetworkImage(
+            url,
+            webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
+          ));
 
   return ClipRRect(
     borderRadius: BorderRadius.circular(AppShapes.radius8),
